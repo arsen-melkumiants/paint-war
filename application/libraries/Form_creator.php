@@ -24,21 +24,34 @@ class Form_creator
 		return call_user_func_array( array($this, $method), $arguments);
 	}
 	
+    public function attributes($list = false, $data = false){
+        if(empty($list) || empty($data)){
+            return false;
+        }
+        $attrs = '';
+        foreach($list as $name){
+            if(empty($data[$name])){
+                continue;
+            }
+            $attrs .= ' '.$name.'="'.$data[$name].'"';
+        }
+        return $attrs;
+    }
+	
 	public function input($name = false, $params = false, $type = "text"){
 		if(empty($name)){
 			return $this;
 		}
 		
+        $params['name'] = $name;
 		$params['type'] = $type;
 		$params['value'] = isset($params['value']) ? $params['value'] : '';
 		$params['label'] = !empty($params['label']) ? $params['label'] : '';
-		$params['readonly'] = isset($params['readonly']) ? ' readonly="readonly"' : '';
-		$params['placeholder'] = !empty($params['placeholder']) ? ' placeholder="'.$params['placeholder'].'" ' : '';
 		
 		if(!empty($params['valid_rules'])){
 			$CI =& get_instance();
 			$CI->load->library('form_validation');
-			$field_name = !empty($params['label']) ? $params['label'] : ucfirst($name);
+			$field_name = !empty($params['label']) ? $params['label'] : (!empty($params['placeholder']) ? $params['placeholder'] : ucfirst($name));
 			$CI->form_validation->set_rules($name, $field_name, $params['valid_rules']);
 			$CI->form_validation->run();
 			$params['value'] = $CI->form_validation->set_value($name, $params['value']);
@@ -74,14 +87,18 @@ class Form_creator
 		if($type == 'radio'){
 			if(is_array($params['inputs'])){
 				foreach($params['inputs'] as $value => $info){
-					$info['checked'] = !empty($info['checked']) ? ' checked="checked"' : '';
+                    $info['checked'] = !empty($params['value']) && $params['value'] == $value ? ' checked="checked"' : '';
 					$input .= '<label class="radio-inline">'.PHP_EOL;
 					$input .= '<input type="radio" name="'.$name.'" value="'.$value.'"'.$info['checked'].'> '.$info['name'].PHP_EOL;
 					$input .= '</label>'.PHP_EOL;
 				}
 			}
-		}else{
-			$input .= '<input type="'.$type.'" class="'.$params['class'].'" name="'.$name.'" value="'.$params['value'].'"'.$params['placeholder'].$params['readonly'].'/>';
+		}elseif($type == 'textarea'){
+            $attrs_list = array('class','name','readonly','rows');
+			$input .= '<textarea'.$this->attributes($attrs_list, $params).'>'.$params['value'].'</textarea>';
+        }else{
+            $attrs_list = array('type','class','name','value','placeholder','readonly');
+			$input .= '<input'.$this->attributes($attrs_list, $params).'/>';
 		}
 		
 		if(!empty($addon)){
@@ -107,6 +124,11 @@ class Form_creator
 		$this->input($name, $params, 'text');
 		return $this;
 	}
+    
+    public function file($name = false, $params = false){
+		$this->input($name, $params, 'file');
+		return $this;
+	}
 	
 	public function password($name = false, $params = false){
 		$this->input($name, $params, 'password');
@@ -118,7 +140,7 @@ class Form_creator
 		$params['icon'] = isset($params['icon']) ? $params['width'] : 'calendar';
 		$params['icon_pos'] = !empty($params['icon_pos']) ? $params['icon_pos'] : 'right';
 		$params['class'] = isset($params['class']) ? $params['class'] : 'date_time';
-		$params['type'] = !empty($params['type']) ? $params['type'] : 'Y-m-d H:i';
+		$params['type'] = !empty($params['type']) ? $params['type'] : 'Y-m-d';
 		$params['value'] = !empty($params['value']) ? date($params['type'], $params['value']) : '';
 		
 		$this->input($name, $params, 'text');
@@ -127,11 +149,28 @@ class Form_creator
 
 	public function btn($params = false){
 		$name = !empty($params['name']) ? $params['name'] : 'submit';
+        $params['type'] = 'submit';
 		$params['class'] = !empty($params['class']) ? 'btn '.$params['class'] : 'btn btn-primary';
 		$params['value'] = isset($params['value']) ? $params['value'] : ucfirst($name);
 		$params['modal'] = !empty($params['modal']) ? ($params['modal'] == 'close' ? ' data-dismiss="modal"' : ' data-toggle="modal" data-target="#ajaxModal"') : '' ;
 		
-		$btn = '<button class="'.$params['class'].'" name="'.$name.'"'.$params['modal'].'>'.$params['value'].'</button>'.PHP_EOL;
+        $attrs_list = array('class', 'name', 'modal', 'value', 'type');
+		$btn = '<button'.$this->attributes($attrs_list, $params).'>'.$params['value'].'</button>'.PHP_EOL;
+		$this->btn_data[] = array(
+			'form' => $btn,
+			'params' => $params
+		);
+		return $this;
+	}
+	
+    public function link($params = false){
+		$params['name'] = !empty($params['name']) ? $params['name'] : 'link';
+		$params['class'] = !empty($params['class']) ? 'btn '.$params['class'] : 'btn btn-primary';
+		$params['href'] = isset($params['href']) ? $params['href'] : '#';
+		$params['modal'] = !empty($params['modal']) ? ($params['modal'] == 'close' ? ' data-dismiss="modal"' : ' data-toggle="modal" data-target="#ajaxModal"') : '' ;
+		
+        $attrs_list = array('class','href','modal');
+		$btn = '<a'.$this->attributes($attrs_list, $params).'>'.$params['name'].'</a>'.PHP_EOL;
 		$this->btn_data[] = array(
 			'form' => $btn,
 			'params' => $params
@@ -160,12 +199,17 @@ class Form_creator
 	
 	public function radio($name = false, $inputs = false, $params = false){
 		if(empty($name) || empty($inputs)){
-			return false;
+			return $this;
 		}
 		$params['inputs'] = $inputs;
 		$this->input($name, $params, 'radio');
 		return $this;
 	}
+    
+    public function textarea($name = false, $params = false){
+        $this->input($name, $params, 'textarea');
+		return $this;
+    }
 
 	public function create($params = false){
 
@@ -176,8 +220,9 @@ class Form_creator
 		$params['action'] = !empty($params['action']) ? $params['action'] : '';
 		$get_vars = !empty($_GET) ? '?'.http_build_query($_GET) : '';
 		$params['action'] = $params['action'].$get_vars;
+        $params['upload'] = !empty($params['upload']) ? ' enctype="multipart/form-data"' : false;
 		
-		$html .= '<form class="form-horizontal" method="'.$params['method'].'" action="'.$params['action'].'">'.PHP_EOL.
+		$html .= '<form class="form-horizontal" method="'.$params['method'].'" action="'.$params['action'].'"'.$params['upload'].'>'.PHP_EOL.
 			'<div'.$params['class'].'>'.PHP_EOL;
 		$html .= !empty($params['title']) ? '<h3>'.$params['title'].'</h3>'.PHP_EOL : '';
 		$html .= !empty($params['info']) ? '<p>'.$params['info'].'</p>'.PHP_EOL : '';

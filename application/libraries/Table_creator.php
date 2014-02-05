@@ -1,7 +1,6 @@
 <?php  if ( ! defined('BASEPATH')) exit('No direct script access allowed');
 
-class Table_creator
-{
+class Table_creator {
 	
 	public $table_data = array();
 	
@@ -74,7 +73,7 @@ class Table_creator
 		return $this;
 	}
 
-	public function create($rows_data = false){
+	public function create($rows_data = false, $table_params = false){
 		if(empty($this->table_data) ){
 			return false;
 		}
@@ -82,10 +81,17 @@ class Table_creator
 		if(empty($rows_data)){
 			return $html = '<div class="alert alert-info">Записи отсутствуют</div>';
 		}
+        
+        $table_params['class'] = !empty($table_params['class']) ? $table_params['class'] : 'table table-bordered table-hover';
 		
-		$html = '<table class="table table-bordered table-hover">'."\n";
+		$html = '<table class="'.$table_params['class'].'">'."\n";
 		$html .= '<tr>'."\n";
+        //foreach((array)$rows_data[0]){
+        
 		foreach((array)$this->table_data as $item){
+            if(!isset($rows_data[0][$item['name']])){
+                continue;
+            }
 			$title = !empty($item['params']['title']) ? $item['params']['title'] : ucfirst($item['name']);
 			$html .= '<th'.$item['params']['width'].'>'.$title.'</th>'."\n";
 		}
